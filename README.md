@@ -46,4 +46,5 @@ then `pnpm install && pnpm build` inside and `sprite-env services create web --c
 ## Chat UI
 
 `web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route, with
-event cards for tool results. Runs locally: `cd web && pnpm dev`, then open http://localhost:3000.
+event cards for tool results. Runs locally: `cd web && cp .env.example .env.local && pnpm dev`, then
+open http://localhost:3000.
