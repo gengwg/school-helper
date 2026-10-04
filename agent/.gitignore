@@ -12,3 +12,5 @@ credentials.json
 token.json
 data/
 !.env.example
+.neon
+pnpm-workspace.yaml

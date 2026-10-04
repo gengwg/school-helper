@@ -7,8 +7,8 @@ screenshot. It pulls out the dates, checks them against your Google Calendar, ad
 separate "School" calendar, and replies in plain English. Give it the school's name and it also
 pulls the public newsletter calendar, rechecked daily.
 
-Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Exa, WhatsApp Cloud API, Google
-Calendar, and Fly.io Sprites.
+Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Claude, Neon AI Gateway, Exa,
+AgentMail, WhatsApp Cloud API, Google Calendar, assistant-ui, and Fly.io Sprites.
 
 ## Run
 
@@ -18,6 +18,10 @@ cp .env.example .env        # fill in keys
 npx tsx scripts/auth-google.ts   # once, needs credentials.json from Google Cloud
 pnpm dev                    # http://localhost:4111/app
 ```
+
+The chat agent calls Claude through the Neon AI Gateway when `neon link` has pulled the gateway
+variables (`agent/neon.ts` enables it); the extractor uses the direct Anthropic key because the
+gateway does not pass structured-output requests.
 
 Tests: `pnpm test`. Extraction check without touching the calendar:
 `npx tsx scripts/extract.ts fixtures/whatsapp-export.txt`.
