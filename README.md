@@ -1,5 +1,7 @@
 # School Helper
 
+![School Helper](assets/team-photo.png)
+
 Personal agent for busy parents. Paste the class group chat, forward a WhatsApp message, or drop a
 screenshot. It pulls out the dates, checks them against your Google Calendar, adds them to a
 separate "School" calendar, and replies in plain English. Give it the school's name and it also
