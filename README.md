@@ -7,7 +7,8 @@ screenshot. It pulls out the dates, checks them against your Google Calendar, ad
 separate "School" calendar, and replies in plain English. Give it the school's name and it also
 pulls the public newsletter calendar, rechecked daily.
 
-Live demo: https://school-helper-b3yxo.sprites.app/app. Email the agent at school-helper@agentmail.to.
+Live demo: https://school-helper-b3yxo.sprites.app/app. Chat: https://school-helper-web-b3yxo.sprites.app.
+Email the agent at school-helper@agentmail.to.
 
 Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Claude, Neon AI Gateway, Exa,
 AgentMail, WhatsApp Cloud API, Google Calendar, assistant-ui, and Fly.io Sprites.
@@ -46,5 +47,6 @@ then `pnpm install && pnpm build` inside and `sprite-env services create web --c
 ## Chat UI
 
 `web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route, with
-event cards for tool results. Runs locally: `cd web && cp .env.example .env.local && pnpm dev`, then
-open http://localhost:3000.
+event cards for tool results. Locally: `cd web && cp .env.example .env.local && pnpm dev`, then open
+http://localhost:3000. Deployed the same way as the agent, on its own sprite with `web/start.sh` and
+`NEXT_PUBLIC_AGENT_URL` set to the agent's public URL in `.env.production` before `pnpm build`.
