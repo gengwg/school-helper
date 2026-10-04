@@ -7,6 +7,8 @@ screenshot. It pulls out the dates, checks them against your Google Calendar, ad
 separate "School" calendar, and replies in plain English. Give it the school's name and it also
 pulls the public newsletter calendar, rechecked daily.
 
+Live demo: https://school-helper-b3yxo.sprites.app/app. Email the agent at school-helper@agentmail.to.
+
 Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Claude, Neon AI Gateway, Exa,
 AgentMail, WhatsApp Cloud API, Google Calendar, assistant-ui, and Fly.io Sprites.
 
@@ -39,8 +41,9 @@ then `pnpm install && pnpm build` inside and `sprite-env services create web --c
   Parents share a WhatsApp "Export chat" or forward a school email to that address and get a reply.
 - WhatsApp (Meta Cloud API): webhook `https://<host>/whatsapp`, verify token from `.env`, subscribe
   to `messages`. Parents forward messages to the agent's number; it replies in the same thread.
+  Built and verified against Meta's handshake, but needs a Meta developer app to go live.
 
 ## Chat UI
 
-`web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route.
-`cd web && pnpm dev`, then open http://localhost:3000.
+`web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route, with
+event cards for tool results. Runs locally: `cd web && pnpm dev`, then open http://localhost:3000.
