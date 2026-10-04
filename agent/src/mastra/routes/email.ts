@@ -1,7 +1,7 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { AgentMailClient } from 'agentmail';
 import { Webhook } from 'svix';
-import { handleInbound, type Attachment } from '../../inbound.js';
+import { handleInbound, readable, type Attachment } from '../../inbound.js';
 
 const seen = new Set<string>();
 let client: AgentMailClient | undefined;
@@ -35,10 +35,10 @@ async function handle(mastra: any, inboxId: string, messageId: string) {
   const attachments: Attachment[] = [];
   for (const a of msg.attachments ?? []) {
     const type = a.contentType ?? '';
-    if (!type.startsWith('text/') && !type.startsWith('image/')) continue;
+    if (!readable(type, a.filename)) continue;
     const { downloadUrl } = await mail().inboxes.messages.getAttachment(inboxId, messageId, a.attachmentId);
     const res = await fetch(downloadUrl);
-    attachments.push({ data: Buffer.from(await res.arrayBuffer()), mimeType: type });
+    attachments.push({ data: Buffer.from(await res.arrayBuffer()), mimeType: type, filename: a.filename });
   }
   await handleInbound(mastra, {
     text: `${msg.subject ?? ''}\n${text}`,
