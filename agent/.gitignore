@@ -12,3 +12,4 @@ credentials.json
 token.json
 data/
 !.env.example
+.neon

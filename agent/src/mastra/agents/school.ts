@@ -1,6 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import { listEventsTool, createEventTool, ingestTool } from '../tools/calendar.js';
 import { todayContext } from '../../pipeline.js';
+import { createAnthropic } from '@ai-sdk/anthropic';
 
 const MODEL = {
   id: (process.env.MODEL || 'anthropic/claude-opus-5-5') as `${string}/${string}`,
@@ -26,10 +27,17 @@ Rules:
 - A chat may contain many unrelated events from different people. Capture all of them.`,
 });
 
+// The chat agent runs through the Neon AI Gateway's native Anthropic route when its credentials are
+// present. The extractor stays on the direct key: the gateway rejects structured output requests.
+const gateway = process.env.NEON_AI_GATEWAY_TOKEN && process.env.NEON_AI_GATEWAY_BASE_URL
+  ? createAnthropic({ baseURL: `${process.env.NEON_AI_GATEWAY_BASE_URL}/anthropic/v1`, authToken: process.env.NEON_AI_GATEWAY_TOKEN })
+  : undefined;
+const CHAT_MODEL = gateway ? gateway(process.env.CHAT_MODEL || 'claude-opus-5-5') : MODEL;
+
 export const schoolAgent = new Agent({
   id: 'schoolAgent',
   name: 'School Helper',
-  model: MODEL,
+  model: CHAT_MODEL,
   tools: { listEventsTool, createEventTool, ingestTool },
   instructions: () => `You are School Helper, a calm assistant for a busy parent. You know their kids' school events.
 ${todayContext()} "This week" means today through the coming Sunday.
