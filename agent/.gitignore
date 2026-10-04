@@ -1,0 +1,14 @@
+node_modules
+dist
+.mastra
+.env
+.env.*
+*.db
+*.db-*
+*.duckdb
+*.duckdb.wal
+
+credentials.json
+token.json
+data/
+!.env.example

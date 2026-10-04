@@ -1,0 +1,30 @@
+{
+  "name": "agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "start": "mastra start"
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "@googleapis/calendar": "^20.1.0",
+    "@mastra/ai-sdk": "^1.10.6",
+    "@mastra/core": "latest",
+    "agentmail": "^0.5.35",
+    "exa-js": "^2.25.0",
+    "svix": "^2.6.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "mastra": "latest",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}

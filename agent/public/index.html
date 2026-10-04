@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School Helper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1f2a44; --muted: #6b7a99; --rule: #dce1ec; --paper: #ffffff;
+    --mark: #ffe766; --alert: #e4572e; --alert-soft: #fdeae4; --focus: #2f6fed;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 18px; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif; line-height: 1.45;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 28px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  h1 small { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+  .lead { font-size: 1.65rem; line-height: 1.2; font-weight: 700; margin: 0 0 20px; letter-spacing: -0.01em; }
+  .lead em { font-style: normal; background: linear-gradient(transparent 55%, var(--mark) 55%, var(--mark) 92%, transparent 92%); }
+  textarea {
+    width: 100%; min-height: 150px; padding: 14px; font: inherit; color: inherit; resize: vertical;
+    border: 2px solid var(--ink); border-radius: 10px; background: #fff;
+  }
+  textarea::placeholder { color: var(--muted); }
+  .drop {
+    margin-top: 10px; padding: 12px 14px; border: 2px dashed var(--rule); border-radius: 10px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer;
+  }
+  .drop.over { border-color: var(--ink); color: var(--ink); }
+  .drop input { display: none; }
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 700; color: #fff; background: var(--ink); border: 0; border-radius: 10px;
+    padding: 12px 20px; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: progress; }
+  button.quiet { background: transparent; color: var(--ink); border: 2px solid var(--rule); font-weight: 400; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .status { color: var(--muted); }
+  #result { margin: 24px 0 0; padding: 18px 0; border-top: 2px solid var(--ink); white-space: pre-line; font-size: 1.05rem; }
+  #result:empty { display: none; }
+  h2 { font-size: 1.1rem; margin: 48px 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  h2 small { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+  .day { display: grid; grid-template-columns: 64px 1fr; gap: 0 16px; padding: 14px 0; border-top: 1px solid var(--rule); }
+  .date { line-height: 1.1; }
+  .date b { display: block; font-size: 1.7rem; letter-spacing: -0.02em; }
+  .date span { color: var(--muted); font-size: 0.85rem; }
+  .ev { padding: 4px 0 4px 12px; border-left: 3px solid transparent; }
+  .ev + .ev { margin-top: 8px; }
+  .ev .t { font-weight: 700; }
+  .ev .t.new { background: linear-gradient(transparent 50%, var(--mark) 50%, var(--mark) 95%, transparent 95%); }
+  .ev .m { color: var(--muted); font-size: 0.9rem; }
+  .ev.personal .t { font-weight: 400; }
+  .ev.clash { border-left-color: var(--alert); background: var(--alert-soft); border-radius: 0 8px 8px 0; padding-right: 10px; }
+  .ev.clash .m { color: var(--alert); }
+  .empty { color: var(--muted); padding: 24px 0; border-top: 1px solid var(--rule); }
+  .school { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--muted); }
+  .school form { display: flex; gap: 10px; margin-top: 10px; }
+  .school input { flex: 1; font: inherit; padding: 10px 12px; border: 2px solid var(--rule); border-radius: 10px; color: var(--ink); }
+  @media (prefers-reduced-motion: no-preference) { button, .drop { transition: opacity .15s, border-color .15s; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>School Helper <small id="wa"></small></h1>
+
+  <p class="lead">Paste the class chat. <em>The dates land on your calendar.</em></p>
+
+  <form id="ingest">
+    <textarea id="text" placeholder="Paste a WhatsApp thread, a newsletter, or one message. Picture day, the practice that moved, the RSVP."></textarea>
+    <label class="drop" id="drop">
+      <span id="dropLabel">Or drop a screenshot of the chat here</span>
+      <input type="file" id="file" accept="image/*">
+    </label>
+    <div class="row">
+      <button type="submit" id="go">Add to my calendar</button>
+      <span class="status" id="status"></span>
+    </div>
+  </form>
+
+  <div id="result" aria-live="polite"></div>
+
+  <h2>Next two weeks <small id="count"></small></h2>
+  <div id="agenda"></div>
+
+  <section class="school">
+    <div id="schoolLine">Tell me the school and I will pull its public newsletter calendar too.</div>
+    <form id="schoolForm">
+      <input id="schoolName" placeholder="Ardenwood Elementary, Fremont">
+      <button type="submit" class="quiet">Pull school calendar</button>
+    </form>
+  </section>
+</main>
+
+<script>
+const API = location.origin;
+const $ = (id) => document.getElementById(id);
+let image = null;
+const justAdded = new Set();
+
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '');
+const dayKey = (iso) => iso.slice(0, 10);
+
+$('file').addEventListener('change', (e) => setImage(e.target.files[0]));
+const drop = $('drop');
+['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => setImage(e.dataTransfer.files[0]));
+document.addEventListener('paste', (e) => {
+  const f = [...(e.clipboardData?.files || [])].find((x) => x.type.startsWith('image/'));
+  if (f) { e.preventDefault(); setImage(f); }
+});
+
+function setImage(f) {
+  if (!f || !f.type.startsWith('image/')) return;
+  image = f;
+  $('dropLabel').textContent = `Screenshot ready: ${f.name || 'pasted image'}`;
+}
+
+$('ingest').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = $('text').value.trim();
+  if (!text && !image) { $('status').textContent = 'Paste some text or add a screenshot first.'; return; }
+  $('go').disabled = true; $('status').textContent = 'Reading the dates and checking your calendar.'; $('result').textContent = '';
+  try {
+    const body = { text };
+    if (image) { body.imageBase64 = await toBase64(image); body.mimeType = image.type; }
+    const r = await fetch(`${API}/ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    data.created.forEach((ev) => justAdded.add(ev.id));
+    $('result').textContent = data.summary;
+    $('text').value = ''; image = null; $('file').value = ''; $('dropLabel').textContent = 'Or drop a screenshot of the chat here';
+    await loadWeek();
+  } catch (err) {
+    $('result').textContent = `That did not work: ${err.message}`;
+  } finally {
+    $('go').disabled = false; $('status').textContent = '';
+  }
+});
+
+$('schoolForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const school = $('schoolName').value.trim();
+  if (!school) return;
+  const btn = e.target.querySelector('button'); btn.disabled = true;
+  $('schoolLine').textContent = `Looking for ${school}'s newsletters. This takes a minute.`;
+  try {
+    const r = await fetch(`${API}/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ school }) });
+    const data = await r.json();
+    data.created.forEach((ev) => justAdded.add(ev.id));
+    $('schoolLine').textContent = data.created.length
+      ? `Added ${data.created.length} events from ${school}. I will check for new ones every day.`
+      : `${school} is set. No new dated events found yet; I will check every day.`;
+    await loadWeek();
+  } catch (err) {
+    $('schoolLine').textContent = `Could not reach the school site: ${err.message}`;
+  } finally { btn.disabled = false; }
+});
+
+function toBase64(f) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
+}
+
+function overlaps(a, b) {
+  if (a.allDay || b.allDay) return false;
+  return new Date(a.start) < new Date(b.end) && new Date(b.start) < new Date(a.end);
+}
+
+async function loadWeek() {
+  const r = await fetch(`${API}/week`);
+  const { events, school, whatsapp, email } = await r.json();
+  const channels = [whatsapp && `WhatsApp ${whatsapp}`, email && `Email ${email}`].filter(Boolean);
+  if (channels.length) $('wa').textContent = channels.join(' or ');
+  if (school) { $('schoolName').value = school; if (!$('schoolLine').dataset.touched) $('schoolLine').textContent = `${school} newsletters are checked daily.`; }
+  $('count').textContent = events.length ? `${events.length} events` : '';
+  const agenda = $('agenda'); agenda.innerHTML = '';
+  if (!events.length) { agenda.innerHTML = '<div class="empty">Nothing yet. Paste a chat above and the next two weeks fill in here.</div>'; return; }
+  const byDay = new Map();
+  for (const ev of events) { const k = dayKey(ev.start); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(ev); }
+  for (const [k, list] of byDay) {
+    const d = new Date(k + 'T12:00:00');
+    const wrap = document.createElement('div'); wrap.className = 'day';
+    wrap.innerHTML = `<div class="date"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short' })}</span></div>`;
+    const col = document.createElement('div');
+    for (const ev of list) {
+      const clash = events.find((o) => o.id !== ev.id && overlaps(ev, o));
+      const el = document.createElement('div');
+      el.className = `ev ${ev.calendar}${clash ? ' clash' : ''}`;
+      const when = ev.allDay ? 'All day' : `${fmtTime(ev.start)} to ${fmtTime(ev.end)}`;
+      const child = (ev.description || '').match(/^For: (.+)$/m)?.[1];
+      el.innerHTML = `<div class="t${justAdded.has(ev.id) ? ' new' : ''}">${esc(ev.title)}</div>
+        <div class="m">${when}${ev.location ? `, ${esc(ev.location)}` : ''}${child ? `, for ${esc(child)}` : ''}${clash ? `. Overlaps with ${esc(clash.title)}` : ''}</div>`;
+      col.appendChild(el);
+    }
+    wrap.appendChild(col); agenda.appendChild(wrap);
+  }
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+$('schoolName').addEventListener('input', () => { $('schoolLine').dataset.touched = '1'; });
+loadWeek().catch(() => { $('agenda').innerHTML = '<div class="empty">Cannot reach the agent server yet.</div>'; });
+</script>
+</body>
+</html>

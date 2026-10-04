@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+credentials.json
+token.json
+.mastra/
+.next/
+data/
+# local agent tooling
+.claude/
+.agents/
+skills/
+skills-lock.json
+.mcp.json
