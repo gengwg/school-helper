@@ -1,6 +1,6 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { downloadMedia, inboundMessages, sendText } from '../../whatsapp.js';
-import { handleInbound, type Attachment } from '../../inbound.js';
+import { handleInbound, readable, type Attachment } from '../../inbound.js';
 
 const seen = new Set<string>();
 
@@ -36,11 +36,11 @@ async function handle(mastra: any, m: ReturnType<typeof inboundMessages>[number]
   const media = m.image?.id ?? m.document?.id;
   if (media) {
     const file = await downloadMedia(media);
-    if (!file.mimeType.startsWith('text/') && !file.mimeType.startsWith('image/')) {
+    if (!readable(file.mimeType, m.document?.filename)) {
       await sendText(m.from, 'I can read text, chat exports, and screenshots, but not that file type.');
       return;
     }
-    attachments.push(file);
+    attachments.push({ ...file, filename: m.document?.filename });
   }
   await handleInbound(mastra, {
     text: m.text?.body ?? m.image?.caption ?? m.document?.caption ?? '',

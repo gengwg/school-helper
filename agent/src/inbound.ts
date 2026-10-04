@@ -1,7 +1,11 @@
 import { extract, reconcile, formatReply, type Input } from './pipeline.js';
 import { syncSchool, setSchool } from './sync.js';
+import { textEntries, isZip } from './zip.js';
 
-export type Attachment = { data: Buffer; mimeType: string };
+export type Attachment = { data: Buffer; mimeType: string; filename?: string };
+
+export const readable = (mimeType: string, filename?: string) =>
+  mimeType.startsWith('text/') || mimeType.startsWith('image/') || isZip(mimeType, filename);
 
 /** One message from any channel: text plus optional files, and a way to answer. */
 export type Inbound = {
@@ -28,7 +32,9 @@ export async function handleInbound(mastra: any, m: Inbound) {
 
   const input: Input = { text: m.text };
   for (const a of m.attachments) {
-    if (a.mimeType.startsWith('text/')) input.text = `${input.text}\n${a.data.toString('utf8')}`;
+    if (isZip(a.mimeType, a.filename)) {
+      for (const e of textEntries(a.data)) input.text = `${input.text}\n${e.text}`;
+    } else if (a.mimeType.startsWith('text/')) input.text = `${input.text}\n${a.data.toString('utf8')}`;
     else if (a.mimeType.startsWith('image/')) input.image = a;
   }
   if (!input.text?.trim() && !input.image) return;
