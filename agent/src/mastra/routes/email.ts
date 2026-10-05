@@ -2,6 +2,7 @@ import { registerApiRoute } from '@mastra/core/server';
 import { AgentMailClient } from 'agentmail';
 import { Webhook } from 'svix';
 import { handleInbound, readable, type Attachment } from '../../inbound.js';
+import { senderAllowed } from '../auth.js';
 
 const seen = new Set<string>();
 let client: AgentMailClient | undefined;
@@ -23,6 +24,10 @@ export const emailInbound = registerApiRoute('/email', {
     const id = event.message?.message_id as string;
     if (!id || seen.has(id)) return c.json({ ok: true });
     seen.add(id);
+    if (!senderAllowed(event.message.from ?? '')) {
+      mastra.getLogger().warn('email from unlisted sender ignored', { from: event.message.from });
+      return c.json({ ok: true });
+    }
     handle(mastra, event.message.inbox_id, id).catch((err) => mastra.getLogger().error('email handle failed', { err: String(err) }));
     return c.json({ ok: true });
   },

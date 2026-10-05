@@ -5,13 +5,17 @@ import { extractor, schoolAgent } from './agents/school.js';
 import { whatsappVerify, whatsappInbound } from './routes/whatsapp.js';
 import { ingestRoute, weekRoute, syncRoute, appRoute } from './routes/web.js';
 import { emailInbound } from './routes/email.js';
+import { familyCode } from './auth.js';
 import { startHeartbeat } from '../sync.js';
 
 export const mastra = new Mastra({
   agents: { extractor, schoolAgent },
   server: {
-    cors: { origin: '*', allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type'] },
-    apiRoutes: [chatRoute({ path: '/chat/:agentId' }), whatsappVerify, whatsappInbound, ingestRoute, weekRoute, syncRoute, appRoute, emailInbound],
+    cors: { origin: '*', allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'x-family-code'] },
+    apiRoutes: [
+      { ...chatRoute({ path: '/chat/:agentId' }), middleware: familyCode },
+      whatsappVerify, whatsappInbound, ingestRoute, weekRoute, syncRoute, appRoute, emailInbound,
+    ],
   },
 });
 
