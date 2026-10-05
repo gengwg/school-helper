@@ -47,6 +47,8 @@ then `pnpm install && pnpm build` inside and `sprite-env services create web --c
 
 ## Chat UI
 
+![Chat UI adding an event](assets/chat-ui.png)
+
 `web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route, with
 event cards for tool results. Locally: `cd web && cp .env.example .env.local && pnpm dev`, then open
 http://localhost:3000. Deployed the same way as the agent, on its own sprite with `web/start.sh` and
