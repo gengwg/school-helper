@@ -60,6 +60,8 @@ they can add events by email. Per-parent Google sign-in is the proper long-term 
 
 ![Chat UI adding an event](assets/chat-ui.png)
 
+![Chat UI summarizing next week with conflicts](assets/chat-weekly-summary.png)
+
 `web/` is a Next.js app with assistant-ui talking to the agent's `/chat/schoolAgent` route, with
 event cards for tool results. Locally: `cd web && cp .env.example .env.local && pnpm dev`, then open
 http://localhost:3000. Deployed the same way as the agent, on its own sprite with `web/start.sh` and
