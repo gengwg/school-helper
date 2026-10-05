@@ -99,6 +99,19 @@
 
 <script>
 const API = location.origin;
+let code = '';
+try { code = localStorage.getItem('familyCode') || ''; } catch {}
+const headers = () => (code ? { 'x-family-code': code } : {});
+async function api(path, init = {}) {
+  const r = await fetch(`${API}${path}`, { ...init, headers: { ...(init.headers || {}), ...headers() } });
+  if (r.status === 401) {
+    code = prompt('Enter your family code') || '';
+    try { localStorage.setItem('familyCode', code); } catch {}
+    if (!code) throw new Error('family code required');
+    return api(path, init);
+  }
+  return r;
+}
 const $ = (id) => document.getElementById(id);
 let image = null;
 const justAdded = new Set();
@@ -130,7 +143,7 @@ $('ingest').addEventListener('submit', async (e) => {
   try {
     const body = { text };
     if (image) { body.imageBase64 = await toBase64(image); body.mimeType = image.type; }
-    const r = await fetch(`${API}/ingest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await api('/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) throw new Error(await r.text());
     const data = await r.json();
     data.created.forEach((ev) => justAdded.add(ev.id));
@@ -151,7 +164,7 @@ $('schoolForm').addEventListener('submit', async (e) => {
   const btn = e.target.querySelector('button'); btn.disabled = true;
   $('schoolLine').textContent = `Looking for ${school}'s newsletters. This takes a minute.`;
   try {
-    const r = await fetch(`${API}/sync`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ school }) });
+    const r = await api('/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ school }) });
     const data = await r.json();
     data.created.forEach((ev) => justAdded.add(ev.id));
     $('schoolLine').textContent = data.created.length
@@ -173,7 +186,7 @@ function overlaps(a, b) {
 }
 
 async function loadWeek() {
-  const r = await fetch(`${API}/week`);
+  const r = await api('/week');
   const { events, school, whatsapp, email } = await r.json();
   const channels = [whatsapp && `WhatsApp ${whatsapp}`, email && `Email ${email}`].filter(Boolean);
   if (channels.length) $('wa').textContent = channels.join(' or ');

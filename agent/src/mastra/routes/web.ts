@@ -3,10 +3,12 @@ import { listEvents } from '../../calendar.js';
 import { extract, reconcile, formatReply, type Input } from '../../pipeline.js';
 import { syncSchool, getSchool, setSchool } from '../../sync.js';
 import { path } from '../../paths.js';
+import { familyCode } from '../auth.js';
 
 /** Paste a thread or drop a screenshot. Zero setup path for the dashboard. */
 export const ingestRoute = registerApiRoute('/ingest', {
   method: 'POST',
+  middleware: familyCode,
   handler: async (c) => {
     const mastra = c.get('mastra');
     const body = (await c.req.json()) as { text?: string; imageBase64?: string; mimeType?: string };
@@ -19,6 +21,7 @@ export const ingestRoute = registerApiRoute('/ingest', {
 
 export const weekRoute = registerApiRoute('/week', {
   method: 'GET',
+  middleware: familyCode,
   handler: async (c) => {
     const now = new Date();
     const end = new Date(now); end.setDate(end.getDate() + 14);
@@ -29,6 +32,7 @@ export const weekRoute = registerApiRoute('/week', {
 
 export const syncRoute = registerApiRoute('/sync', {
   method: 'POST',
+  middleware: familyCode,
   handler: async (c) => {
     const mastra = c.get('mastra');
     const body = (await c.req.json().catch(() => ({}))) as { school?: string };

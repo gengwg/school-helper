@@ -14,6 +14,10 @@ pulls the public newsletter calendar, rechecked daily.
 Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Claude, Neon AI Gateway, Exa,
 AgentMail, WhatsApp Cloud API, Google Calendar, assistant-ui, and Fly.io Sprites.
 
+The event from the chat, on the phone next to the family's own calendar:
+
+<img src="assets/calendar-phone.jpg" alt="School calendar on the phone" width="360">
+
 ## Run
 
 ```
@@ -35,6 +39,13 @@ Tests: `pnpm test`. Extraction check without touching the calendar:
 The agent runs as a service on a sprite; `agent/start.sh` loads `.env` and starts the built server.
 Upload with `tar czf - --exclude=node_modules --exclude=.mastra . | sprite exec -s school-helper -- bash -c 'cat > ~/app/src.tgz'`,
 then `pnpm install && pnpm build` inside and `sprite-env services create web --cmd /bin/bash --args ~/app/start.sh --http-port 4111`.
+
+## Access
+
+The demo deployment is open. For real use set `APP_TOKEN` in `agent/.env`: the dashboard, school
+sync, and chat then require that family code (the dashboard asks once and remembers it; the chat
+takes it from `?code=` in the URL once). Set `ALLOWED_SENDERS` to the parents' email addresses so only
+they can add events by email. Per-parent Google sign-in is the proper long-term answer and is not built.
 
 ## Channels
 
