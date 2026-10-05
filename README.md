@@ -42,10 +42,11 @@ then `pnpm install && pnpm build` inside and `sprite-env services create web --c
 
 ## Access
 
-The demo deployment is open. For real use set `APP_TOKEN` in `agent/.env`: the dashboard, school
-sync, and chat then require that family code (the dashboard asks once and remembers it; the chat
-takes it from `?code=` in the URL once). Set `ALLOWED_SENDERS` to the parents' email addresses so only
-they can add events by email. Per-parent Google sign-in is the proper long-term answer and is not built.
+The deployment requires a family code. The dashboard asks for it once and remembers it in the
+browser; the chat takes it from `?code=` in the URL once. Set it with `APP_TOKEN` in `agent/.env`.
+`ALLOWED_SENDERS` lists the parents' email addresses so only they can add events by email. Leaving
+both unset makes the agent open, which is only right for a demo. Per-parent Google sign-in is the
+proper long-term answer and is not built.
 
 ## Channels
 
