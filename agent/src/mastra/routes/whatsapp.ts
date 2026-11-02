@@ -1,6 +1,7 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { downloadMedia, inboundMessages, sendText } from '../../whatsapp.js';
 import { handleInbound, readable, type Attachment } from '../../inbound.js';
+import { onAllowlist } from '../auth.js';
 
 const seen = new Set<string>();
 
@@ -22,8 +23,10 @@ export const whatsappInbound = registerApiRoute('/whatsapp', {
     for (const m of inboundMessages(body)) {
       if (seen.has(m.id)) continue;
       seen.add(m.id);
-      const allowed = process.env.WHATSAPP_ALLOWED_FROM?.split(',').filter(Boolean);
-      if (allowed?.length && !allowed.includes(m.from)) continue;
+      if (!onAllowlist('WHATSAPP_ALLOWED_FROM', m.from)) {
+        mastra.getLogger().warn('whatsapp from unlisted number ignored', { from: m.from });
+        continue;
+      }
       // Reply async so Meta gets its 200 right away and does not retry.
       handle(mastra, m).catch((err) => mastra.getLogger().error('whatsapp handle failed', { err: String(err) }));
     }
