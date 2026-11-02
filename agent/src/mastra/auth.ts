@@ -12,10 +12,16 @@ export const familyCode: MiddlewareHandler = async (c, next) => {
   return next();
 };
 
-/** Email channel allowlist: comma-separated addresses in ALLOWED_SENDERS. Unset means anyone. */
+/**
+ * Inbound channel allowlist: comma-separated ids in the named env var. Unset or empty lets nobody
+ * in, so a missing variable can't open a channel that writes to the family calendar.
+ */
+export function onAllowlist(envVar: string, id: string) {
+  const allowed = (process.env[envVar] ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(id.trim().toLowerCase());
+}
+
+/** Email senders arrive as "Name <addr>"; match the address against ALLOWED_SENDERS. */
 export function senderAllowed(from: string) {
-  const allowed = (process.env.ALLOWED_SENDERS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (!allowed.length) return true;
-  const addr = (from.match(/<([^>]+)>/)?.[1] ?? from).trim().toLowerCase();
-  return allowed.includes(addr);
+  return onAllowlist('ALLOWED_SENDERS', from.match(/<([^>]+)>/)?.[1] ?? from);
 }
