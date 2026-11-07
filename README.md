@@ -37,8 +37,18 @@ Tests: `pnpm test`. Extraction check without touching the calendar:
 ## Deploy (Fly.io Sprite)
 
 The agent runs as a service on a sprite; `agent/start.sh` loads `.env` and starts the built server.
-Upload with `tar czf - --exclude=node_modules --exclude=.mastra . | sprite exec -s school-helper -- bash -c 'cat > ~/app/src.tgz'`,
-then `pnpm install && pnpm build` inside and `sprite-env services create web --cmd /bin/bash --args ~/app/start.sh --http-port 4111`.
+Deploy the tracked agent tree from merged `main`, leaving the remote `.env`, Google token, and data files untouched:
+
+```
+git archive --format=tar.gz origin/main:agent | sprite exec -s school-helper -- bash -c 'cat > ~/app/src.tgz'
+sprite exec -s school-helper -- bash -c 'cd ~/app && tar xzf src.tgz && pnpm install && pnpm build'
+sprite exec -s school-helper -- bash -c 'cd ~/app && sprite-env services restart web'
+```
+
+If pnpm blocks the existing esbuild postinstall, run `pnpm approve-builds esbuild` once in `~/app` before
+building. Intake tickets and effects live in `~/.local/state/personal-agent/intake.json` by default;
+`AGENT_STATE_DIR` overrides that directory. Include the intake state in Sprite backups so recovery can
+resume pending work after a restore.
 
 ## Access
 
