@@ -1,9 +1,9 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { downloadMedia, inboundMessages, sendText } from '../../whatsapp.js';
-import { handleInbound, readable, type Attachment } from '../../inbound.js';
+import { handleInbound, readable, type Attachment, type Inbound } from '../../inbound.js';
+import { claim, handle } from '../../intake.js';
+import type { Ticket } from '../../effects.js';
 import { onAllowlist } from '../auth.js';
-
-const seen = new Set<string>();
 
 export const whatsappVerify = registerApiRoute('/whatsapp', {
   method: 'GET',
@@ -21,33 +21,37 @@ export const whatsappInbound = registerApiRoute('/whatsapp', {
     const mastra = c.get('mastra');
     const body = await c.req.json();
     for (const m of inboundMessages(body)) {
-      if (seen.has(m.id)) continue;
-      seen.add(m.id);
       if (!onAllowlist('WHATSAPP_ALLOWED_FROM', m.from)) {
         mastra.getLogger().warn('whatsapp from unlisted number ignored', { from: m.from });
         continue;
       }
+      const ticket = claim({ kind: 'whatsapp', id: m.id }, m);
+      if (!ticket) continue;
       // Reply async so Meta gets its 200 right away and does not retry.
-      handle(mastra, m).catch((err) => mastra.getLogger().error('whatsapp handle failed', { err: String(err) }));
+      void handle(mastra, ticket, prepareWhatsapp).catch((err) => mastra.getLogger().error('whatsapp handle failed', { err: String(err) }));
     }
     return c.json({ ok: true });
   },
 });
 
-async function handle(mastra: any, m: ReturnType<typeof inboundMessages>[number]) {
+export async function prepareWhatsapp(ticket: Ticket): Promise<Inbound> {
+  const m = ticket.data as ReturnType<typeof inboundMessages>[number];
   const attachments: Attachment[] = [];
   const media = m.image?.id ?? m.document?.id;
   if (media) {
     const file = await downloadMedia(media);
     if (!readable(file.mimeType, m.document?.filename)) {
-      await sendText(m.from, 'I can read text, chat exports, and screenshots, but not that file type.');
-      return;
+      return {
+        text: '', attachments: [], reply: (body) => sendText(m.from, body), ticket,
+        notice: 'I can read text, chat exports, and screenshots, but not that file type.',
+      };
     }
     attachments.push({ ...file, filename: m.document?.filename });
   }
-  await handleInbound(mastra, {
+  return {
     text: m.text?.body ?? m.image?.caption ?? m.document?.caption ?? '',
     attachments,
     reply: (body) => sendText(m.from, body),
-  });
+    ticket,
+  };
 }

@@ -24,3 +24,4 @@ export const ExtractionSchema = z.object({
 export type Event = z.infer<typeof EventSchema>;
 export type ActionItem = z.infer<typeof ActionItemSchema>;
 export type Extraction = z.infer<typeof ExtractionSchema>;
+export type EventSource = { kind: string; id: string; event_key?: string; correction?: boolean; revision?: string; revision_at?: number };

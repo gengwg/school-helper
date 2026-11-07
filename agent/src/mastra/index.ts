@@ -3,10 +3,13 @@ import { Mastra } from '@mastra/core/mastra';
 import { chatRoute } from '@mastra/ai-sdk';
 import { extractor, schoolAgent } from './agents/school.js';
 import { whatsappVerify, whatsappInbound } from './routes/whatsapp.js';
-import { ingestRoute, weekRoute, syncRoute, appRoute } from './routes/web.js';
+import { ingestRoute, weekRoute, syncRoute, appRoute, prepareDashboard } from './routes/web.js';
 import { emailInbound } from './routes/email.js';
 import { familyCode } from './auth.js';
 import { startHeartbeat } from '../sync.js';
+import { startRecovery } from '../intake.js';
+import { prepareEmail } from './routes/email.js';
+import { prepareWhatsapp } from './routes/whatsapp.js';
 
 export const mastra = new Mastra({
   agents: { extractor, schoolAgent },
@@ -20,3 +23,4 @@ export const mastra = new Mastra({
 });
 
 startHeartbeat(mastra);
+startRecovery(mastra, { email: prepareEmail, whatsapp: prepareWhatsapp, dashboard: prepareDashboard });

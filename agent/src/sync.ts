@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { findSchoolPages } from './school.js';
 import { path } from './paths.js';
 import { extract, reconcile, type Result } from './pipeline.js';
+import type { Ticket } from './effects.js';
 
 const FILE = path('data', 'school.json');
 
@@ -15,17 +16,23 @@ export async function setSchool(school: string) {
 }
 
 /** Pull the school's public newsletters and add any dated events. Idempotent. */
-export async function syncSchool(mastra: any): Promise<Result> {
+export async function syncSchool(mastra: any, ticket?: Ticket): Promise<Result> {
   const school = await getSchool();
-  const total: Result = { created: [], duplicates: [], conflicts: [], actionItems: [] };
+  const total: Result = { created: [], updated: [], duplicates: [], conflicts: [], actionItems: [], complete: true };
   if (!school) return total;
   const extractor = mastra.getAgent('extractor');
   for (const page of await findSchoolPages(school)) {
     const text = `This is a page from the school's own website: ${page.title} (${page.url}). Only extract school and PTA events; skip anything that is not for this school.\n\n${page.text}`;
-    const r = await reconcile(await extract(extractor, { text }));
+    const r = await reconcile(await extract(extractor, { text }), undefined, ticket);
     total.created.push(...r.created);
+    total.updated?.push(...(r.updated ?? []));
     total.duplicates.push(...r.duplicates);
     total.conflicts.push(...r.conflicts);
+    if (r.complete === false) {
+      total.complete = false;
+      total.error = r.error;
+      break;
+    }
   }
   return total;
 }

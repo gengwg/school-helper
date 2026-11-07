@@ -1,10 +1,11 @@
 import { registerApiRoute } from '@mastra/core/server';
 import { AgentMailClient } from 'agentmail';
 import { Webhook } from 'svix';
-import { handleInbound, readable, type Attachment } from '../../inbound.js';
+import { handleInbound, readable, type Attachment, type Inbound } from '../../inbound.js';
 import { senderAllowed } from '../auth.js';
+import { claim, handle } from '../../intake.js';
+import type { Ticket } from '../../effects.js';
 
-const seen = new Set<string>();
 let client: AgentMailClient | undefined;
 const mail = () => (client ??= new AgentMailClient({ apiKey: process.env.AGENTMAIL_API_KEY }));
 
@@ -22,18 +23,20 @@ export const emailInbound = registerApiRoute('/email', {
     const event = JSON.parse(raw);
     if (event.event_type !== 'message.received') return c.json({ ok: true });
     const id = event.message?.message_id as string;
-    if (!id || seen.has(id)) return c.json({ ok: true });
-    seen.add(id);
+    if (!id) return c.json({ ok: true });
     if (!senderAllowed(event.message.from ?? '')) {
       mastra.getLogger().warn('email from unlisted sender ignored', { from: event.message.from });
       return c.json({ ok: true });
     }
-    handle(mastra, event.message.inbox_id, id).catch((err) => mastra.getLogger().error('email handle failed', { err: String(err) }));
+    const ticket = claim({ kind: 'email', id }, { inboxId: event.message.inbox_id, messageId: id });
+    if (!ticket) return c.json({ ok: true });
+    void handle(mastra, ticket, prepareEmail).catch((err) => mastra.getLogger().error('email handle failed', { err: String(err) }));
     return c.json({ ok: true });
   },
 });
 
-async function handle(mastra: any, inboxId: string, messageId: string) {
+export async function prepareEmail(ticket: Ticket): Promise<Inbound> {
+  const { inboxId, messageId } = ticket.data;
   const msg = await mail().inboxes.messages.get(inboxId, messageId);
   // Forwards from Gmail arrive as HTML only; extractedText strips quoted history when present.
   const text = msg.extractedText ?? msg.text ?? stripHtml(msg.html ?? '');
@@ -45,11 +48,12 @@ async function handle(mastra: any, inboxId: string, messageId: string) {
     const res = await fetch(downloadUrl);
     attachments.push({ data: Buffer.from(await res.arrayBuffer()), mimeType: type, filename: a.filename });
   }
-  await handleInbound(mastra, {
+  return {
     text: `${msg.subject ?? ''}\n${text}`,
     attachments,
     reply: (body) => mail().inboxes.messages.reply(inboxId, messageId, { text: body }).then(() => undefined),
-  });
+    ticket,
+  };
 }
 
 const stripHtml = (h: string) => h.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+\n/g, '\n').trim();
