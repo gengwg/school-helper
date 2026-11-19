@@ -7,9 +7,8 @@ screenshot. It pulls out the dates, checks them against your Google Calendar, ad
 separate "School" calendar, and replies in plain English. Give it the school's name and it also
 pulls the public newsletter calendar, rechecked daily.
 
-- Dashboard: https://school-helper-b3yxo.sprites.app/app
-- Chat: https://school-helper-web-b3yxo.sprites.app
-- Email the agent: school-helper@agentmail.to
+No longer deployed: the Sprite deployment was destroyed on 2026-11-19. The deploy steps below
+describe how it ran.
 
 Built at the Build Personal Agents Hack (Oct 2026) with Mastra, Claude, Neon AI Gateway, Exa,
 AgentMail, WhatsApp Cloud API, Google Calendar, assistant-ui, and Fly.io Sprites.
