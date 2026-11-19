@@ -61,8 +61,8 @@ proper long-term answer and is not built.
 
 A message or school page that would add more than 25 new events adds none and says how many it
 held, since forwarded and fetched content is untrusted. To add them, send the message again starting
-with "add all", or use the Add all button on the dashboard. The daily school recheck only logs a held
-batch.
+with "add all", or use the Add all button on the dashboard. The daily school recheck has nobody to
+reply to, so the dashboard shows what it held, with the same button.
 
 ## Channels
 

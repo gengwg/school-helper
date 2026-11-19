@@ -3,7 +3,7 @@ import { registerApiRoute } from '@mastra/core/server';
 import { listEvents } from '../../calendar.js';
 import { claim, getTicket, handle } from '../../intake.js';
 import type { Inbound } from '../../inbound.js';
-import { syncSchool, getSchool, setSchool } from '../../sync.js';
+import { syncSchool, getSchool, setSchool, getHeld } from '../../sync.js';
 import { formatReply } from '../../pipeline.js';
 import { path } from '../../paths.js';
 import { familyCode } from '../auth.js';
@@ -60,7 +60,7 @@ export const weekRoute = registerApiRoute('/week', {
     const now = new Date();
     const end = new Date(now); end.setDate(end.getDate() + 14);
     const events = await listEvents(now.toISOString(), end.toISOString());
-    return c.json({ events, school: await getSchool(), whatsapp: process.env.WHATSAPP_DISPLAY_NUMBER ?? null, email: process.env.AGENTMAIL_INBOX_ID ?? null });
+    return c.json({ events, school: await getSchool(), held: await getHeld(), whatsapp: process.env.WHATSAPP_DISPLAY_NUMBER ?? null, email: process.env.AGENTMAIL_INBOX_ID ?? null });
   },
 });
 

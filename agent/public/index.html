@@ -213,10 +213,20 @@ function overlaps(a, b) {
 
 async function loadWeek() {
   const r = await api('/week');
-  const { events, school, whatsapp, email } = await r.json();
+  const { events, school, held, whatsapp, email } = await r.json();
   const channels = [whatsapp && `WhatsApp ${whatsapp}`, email && `Email ${email}`].filter(Boolean);
   if (channels.length) $('wa').textContent = channels.join(' or ');
-  if (school) { $('schoolName').value = school; if (!$('schoolLine').dataset.touched) $('schoolLine').textContent = `${school} newsletters are checked daily.`; }
+  if (school) {
+    $('schoolName').value = school;
+    if (!$('schoolLine').dataset.touched) {
+      $('schoolLine').textContent = held
+        ? `The last ${school} check found ${held} new dates, more than I add at once, so none were added yet. `
+        : `${school} newsletters are checked daily.`;
+      // Mark the line touched so the reload after adding keeps the "Added" result.
+      if (held) $('schoolLine').append(addAllButton(held, () => { $('schoolLine').dataset.touched = '1'; return syncSchoolNow(school, true)
+        .catch((err) => { $('schoolLine').textContent = `Could not reach the school site: ${err.message}`; }); }));
+    }
+  }
   $('count').textContent = events.length ? `${events.length} events` : '';
   const agenda = $('agenda'); agenda.innerHTML = '';
   if (!events.length) { agenda.innerHTML = '<div class="empty">Nothing yet. Paste a chat above and the next two weeks fill in here.</div>'; return; }
