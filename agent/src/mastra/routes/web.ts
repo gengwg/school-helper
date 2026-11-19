@@ -69,10 +69,10 @@ export const syncRoute = registerApiRoute('/sync', {
   middleware: familyCode,
   handler: async (c) => {
     const mastra = c.get('mastra');
-    const body = (await c.req.json().catch(() => ({}))) as { school?: string };
+    const body = (await c.req.json().catch(() => ({}))) as { school?: string; addAll?: boolean };
     if (body.school) await setSchool(body.school);
-    const r = await syncSchool(mastra);
-    return c.json({ summary: formatReply(r), ...r });
+    const r = await syncSchool(mastra, undefined, { addAll: body.addAll === true });
+    return c.json({ summary: formatReply(r, 'Use Add all on the dashboard to add them.'), ...r });
   },
 });
 

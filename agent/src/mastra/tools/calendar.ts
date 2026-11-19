@@ -27,12 +27,12 @@ export const createEventTool = createTool({
 
 export const ingestTool = createTool({
   id: 'ingest',
-  description: 'Extract events from pasted chat/newsletter text, add them to the School calendar, and return a parent-friendly summary.',
-  inputSchema: z.object({ text: z.string() }),
-  execute: async ({ text }, ctx) => {
+  description: 'Extract events from pasted chat/newsletter text, add them to the School calendar, and return a parent-friendly summary. More than 25 new events are held, not added; set addAll only after the parent has seen the held count and asked to add them.',
+  inputSchema: z.object({ text: z.string(), addAll: z.boolean().optional() }),
+  execute: async ({ text, addAll }, ctx) => {
     const extractor = ctx?.mastra?.getAgent('extractor');
     if (!extractor) throw new Error('extractor agent not registered');
-    const result = await reconcile(await extract(extractor, { text }));
-    return { summary: formatReply(result), ...result };
+    const result = await reconcile(await extract(extractor, { text }), undefined, undefined, { addAll: addAll === true || /^\s*add all\b/i.test(text) });
+    return { summary: formatReply(result, 'Ask the parent whether to add them all.'), ...result };
   },
 });

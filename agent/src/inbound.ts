@@ -1,4 +1,4 @@
-import { extract, reconcile, formatReply, type Input } from './pipeline.js';
+import { extract, reconcile, formatReply, MAX_NEW_EVENTS, type Input, type Result } from './pipeline.js';
 import { enqueueEffect, processEffects, type Ticket } from './effects.js';
 import { syncSchool, setSchool } from './sync.js';
 import { textEntries, isZip } from './zip.js';
@@ -16,6 +16,13 @@ export type Inbound = {
   ticket?: Ticket;
   notice?: string;
 };
+
+function syncReply(r: Result | undefined) {
+  if (r?.held) return `Found the school site, but it lists ${r.held} new dates, more than the ${MAX_NEW_EVENTS} I add at once, so I held them. Set the school again on the dashboard to review and add them.`;
+  return r?.created?.length
+    ? `Found the school site and added ${r.created.length} events. I'll check for new ones every day.`
+    : "I found the school site but no new dated events yet. I'll keep checking daily.";
+}
 
 const SCHOOL_RE = /(?:goes? to|attends?|school is)\s+(.+)/i;
 const CORRECTION_RE = /\b(correction|corrected|rescheduled?|moved|postponed?|instead|new date|date change|time change)\b/i;
@@ -63,9 +70,7 @@ export async function handleInbound(mastra: any, m: Inbound) {
     if (!m.ticket) {
       await m.reply('Got it, looking up the school calendar now. This takes a minute.');
       const r = await syncSchool(mastra);
-      await m.reply(r.created.length
-        ? `Found the school site and added ${r.created.length} events. I'll check for new ones every day.`
-        : "I found the school site but no new dated events yet. I'll keep checking daily.");
+      await m.reply(syncReply(r));
       return;
     }
     enqueueEffect(m.ticket, 'reply', { text: 'Got it, looking up the school calendar now. This takes a minute.' }, `reply:${m.ticket.id}:setup`);
@@ -82,9 +87,7 @@ export async function handleInbound(mastra: any, m: Inbound) {
     }, ['reply', 'calendar.sync']);
     if (!syncEffects.complete) throw new Error(syncEffects.error ?? 'school sync failed');
     const r = m.ticket.effects.find((effect) => effect.kind === 'calendar.sync')?.result;
-    const body = r?.created?.length
-      ? `Found the school site and added ${r.created.length} events. I'll check for new ones every day.`
-      : "I found the school site but no new dated events yet. I'll keep checking daily.";
+    const body = syncReply(r);
     await deliverReply(m, body, `reply:${m.ticket.id}:result`, {
       summary: body,
       created: r?.created ?? [], updated: r?.updated ?? [], duplicates: r?.duplicates ?? [],
@@ -108,7 +111,8 @@ export async function handleInbound(mastra: any, m: Inbound) {
     return;
   }
 
-  const result = await reconcile(await extract(extractor, input), sourceFor(m.ticket, messageText), m.ticket);
+  const addAll = /^\s*add all\b/i.test(messageText);
+  const result = await reconcile(await extract(extractor, input), sourceFor(m.ticket, messageText), m.ticket, { addAll });
   if (m.ticket && result.complete === false) throw new Error(result.error ?? 'calendar effects are incomplete');
   const body = formatReply(result);
   await deliverReply(m, body, `reply:${m.ticket?.id ?? 'message'}:result`, { summary: body, ...result });

@@ -59,6 +59,11 @@ Leaving `APP_TOKEN` unset makes the dashboard and chat open, which is only right
 numbers. Those two channels answer nobody until their list is set. Per-parent Google sign-in is the
 proper long-term answer and is not built.
 
+A message or school page that would add more than 25 new events adds none and says how many it
+held, since forwarded and fetched content is untrusted. To add them, send the message again starting
+with "add all", or use the Add all button on the dashboard. The daily school recheck only logs a held
+batch.
+
 ## Channels
 
 - Dashboard at `/app`: paste a thread or drop a screenshot.

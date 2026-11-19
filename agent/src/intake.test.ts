@@ -168,3 +168,41 @@ test('native intake claims are durable and recovery does not repeat done work', 
   await recover(m, { dashboard: prepare });
   assert.equal(replies.length, 1);
 });
+
+test('a message starting with "add all" lifts the cap; without it the events are held', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-07T20:00:00Z') });
+  process.env.AGENT_STATE_DIR = await mkdtemp(join(tmpdir(), 'personal-agent-cap-'));
+  let inserts = 0;
+  setCalendar({
+    events: {
+      list: async () => ({ data: { items: [] } }),
+      insert: async ({ requestBody }: any) => { inserts++; return { data: { id: `g${inserts}`, ...requestBody } }; },
+      patch: async () => { throw new Error('unexpected patch'); },
+    },
+  } as any);
+  const events = Array.from({ length: 30 }, (_, i) => ({
+    title: `Term event ${i + 1}`, start: `2026-12-${String(i + 1).padStart(2, '0')}`, end: null, allDay: true, location: null, child: null, notes: null,
+  }));
+  const m = {
+    getAgent: () => ({ generate: async () => ({ object: { events, actionItems: [] } }) }),
+    getLogger: () => ({ error: () => undefined, warn: () => undefined }),
+  };
+  const replies: string[] = [];
+  const prepare = async (ticket: any) => ({
+    text: ticket.data.text, attachments: [], ticket, reply: async (body: string) => { replies.push(body); },
+  });
+  try {
+    const held = claim({ kind: 'dashboard', id: 'cap-held' }, { text: 'Term calendar' });
+    await handle(m, held!, prepare);
+    assert.equal(inserts, 0);
+    assert.match(replies[0], /^Held 30 new dates/);
+    assert.match(replies[0], /add all/);
+
+    const approved = claim({ kind: 'dashboard', id: 'cap-approved' }, { text: 'add all\nTerm calendar' });
+    await handle(m, approved!, prepare);
+    assert.equal(inserts, 30);
+    assert.match(replies[1], /^Added:/);
+  } finally {
+    setCalendar(undefined);
+  }
+});
