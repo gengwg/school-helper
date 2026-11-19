@@ -73,7 +73,10 @@ test('a healthy running ticket is not reclaimed', async () => {
   assert.equal(getTicket(ticket!.id)!.attempts, 1);
 });
 
-test('calendar effects and the original reply survive a failed attempt', async () => {
+test('calendar effects and the original reply survive a failed attempt', async (t) => {
+  // The fixture event date is absolute; pin today before it. Scoped to this test because
+  // other tests compare Date.now() with real lock-file mtimes.
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-07T20:00:00Z') });
   const dir = await mkdtemp(join(tmpdir(), 'personal-agent-effects-'));
   process.env.AGENT_STATE_DIR = dir;
   const events: any[] = [];
