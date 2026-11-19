@@ -1,5 +1,5 @@
 // One-time: create the agent's inbox and point its webhook at the deployed server.
-// Usage: npx tsx scripts/setup-agentmail.ts https://school-helper-b3yxo.sprites.app
+// Usage: npx tsx scripts/setup-agentmail.ts https://<host>
 import { AgentMailClient } from 'agentmail';
 import { appendFile } from 'node:fs/promises';
 
