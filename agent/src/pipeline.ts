@@ -6,6 +6,9 @@ import type { Agent } from '@mastra/core/agent';
 
 const TZ = process.env.TZ || 'America/Los_Angeles';
 
+/** Most new events one message or school page may add before the parent confirms. */
+export const MAX_NEW_EVENTS = 25;
+
 export type Input = { text?: string; image?: { data: Buffer; mimeType: string }; source?: EventSource };
 
 export type Result = {
@@ -16,7 +19,11 @@ export type Result = {
   actionItems: Extraction['actionItems'];
   complete?: boolean;
   error?: string;
+  /** New events not added because there were more than MAX_NEW_EVENTS. */
+  held?: number;
 };
+
+export type ReconcileOptions = { addAll?: boolean };
 
 export function todayContext(now = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -122,12 +129,12 @@ async function serialized<T>(work: () => Promise<T>): Promise<T> {
 }
 
 /** Serialize the read/reconcile/write sequence within this service process. */
-export async function reconcile(ex: Extraction, source?: EventSource, ticket?: Ticket): Promise<Result> {
-  return serialized(() => reconcileEvents(ex, source, ticket));
+export async function reconcile(ex: Extraction, source?: EventSource, ticket?: Ticket, options: ReconcileOptions = {}): Promise<Result> {
+  return serialized(() => reconcileEvents(ex, source, ticket, options));
 }
 
 /** Create or update events from source identity, then fuzzy-match only new source events. */
-async function reconcileEvents(ex: Extraction, source?: EventSource, ticket?: Ticket): Promise<Result> {
+async function reconcileEvents(ex: Extraction, source: EventSource | undefined, ticket: Ticket | undefined, options: ReconcileOptions): Promise<Result> {
   const result: Result = { created: [], updated: [], duplicates: [], conflicts: [], actionItems: ex.actionItems, complete: true };
   const updatedResults = result.updated!;
   const todayLocal = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
@@ -140,6 +147,7 @@ async function reconcileEvents(ex: Extraction, source?: EventSource, ticket?: Ti
     : [];
   const effectKeys = new Set<string>();
   const planned: Event[] = [];
+  const newEvents: { ev: Event; eventSource?: EventSource; key: string }[] = [];
 
   for (const { event: ev, index } of candidates) {
     const eventSource = source ? { ...source, event_key: source.event_key ?? `${source.kind}:${source.id}:${index}` } : undefined;
@@ -184,15 +192,21 @@ async function reconcileEvents(ex: Extraction, source?: EventSource, ticket?: Ti
       result.duplicates.push(ev);
       continue;
     }
+    newEvents.push({ ev, eventSource, key });
+    planned.push(ev);
+  }
+
+  // Extracted content is untrusted. Too many new events at once are held as a batch
+  // rather than truncated, so a partial import never reads as complete.
+  if (newEvents.length > MAX_NEW_EVENTS && !options.addAll) result.held = newEvents.length;
+  else for (const { ev, eventSource, key } of newEvents) {
     if (ticket) {
       enqueueEffect(ticket, 'calendar.create', { event: ev, source: eventSource }, key);
       effectKeys.add(key);
-      planned.push(ev);
     } else {
       const created = await createEvent(ev, eventSource);
       rememberEvent(existing, created);
       result.created.push(created);
-      planned.push(ev);
     }
   }
 
@@ -245,9 +259,12 @@ export function fmtWhen(e: { start: string; allDay: boolean }) {
   return `${date} ${time}`;
 }
 
+const ADD_ALL_HINT = 'If they look right, send it again starting with "add all".';
+
 /** Two or three plain sentences a parent can read at a red light. */
-export function formatReply(r: Result): string {
+export function formatReply(r: Result, heldHint = ADD_ALL_HINT): string {
   const lines: string[] = [];
+  if (r.held) lines.push(`Held ${r.held} new dates: more than the ${MAX_NEW_EVENTS} I add at once, so I added none. ${heldHint}`);
   if (r.created.length) lines.push(`Added: ${r.created.map((e) => `${e.title} (${fmtWhen(e)})`).join(', ')}.`);
   if (r.updated?.length) lines.push(`Updated: ${r.updated.map((e) => `${e.title} (${fmtWhen(e)})`).join(', ')}.`);
   if (r.duplicates.length) lines.push(`Already on the calendar: ${r.duplicates.map((e) => e.title).join(', ')}.`);

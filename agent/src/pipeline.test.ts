@@ -1,6 +1,6 @@
 import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatReply, fmtWhen, todayContext, reconcile } from './pipeline.js';
+import { formatReply, fmtWhen, todayContext, reconcile, MAX_NEW_EVENTS } from './pipeline.js';
 import { createEvent, setCalendar, type CalEvent } from './calendar.js';
 
 process.env.TZ = 'America/Los_Angeles';
@@ -417,4 +417,58 @@ test('a lost insert response is recovered by its deterministic event id', async 
   } finally {
     setCalendar(undefined);
   }
+});
+
+const manyEvents = (n: number) => Array.from({ length: n }, (_, i) => ({
+  title: `Event ${i + 1}`, start: `2026-12-${String(i + 1).padStart(2, '0')}`, end: null, allDay: true, location: null, child: null, notes: null,
+}));
+const unrelated: CalEvent = { id: 'g1', title: 'Other', start: '2026-11-10', end: '2026-11-10', allDay: true, calendar: 'school' };
+
+test('a message adding more than the cap creates nothing and reports the count held', async () => {
+  const calendar = fakeCalendar(unrelated);
+  setCalendar(calendar as any);
+  const ticket: any = { id: 'email:flood', source: { kind: 'email', id: 'flood' }, status: 'pending', attempts: 0, effects: [] };
+  const result = await reconcile({ events: manyEvents(MAX_NEW_EVENTS + 1), actionItems: [] }, ticket.source, ticket);
+  assert.equal(calendar.calls.insert, 0);
+  assert.equal(result.created.length, 0);
+  assert.equal(result.held, MAX_NEW_EVENTS + 1);
+  assert.equal(ticket.effects.filter((effect: any) => effect.kind === 'calendar.create').length, 0);
+  assert.match(formatReply(result), new RegExp(`^Held ${MAX_NEW_EVENTS + 1} new dates`));
+});
+
+test('add all creates every event over the cap', async () => {
+  const calendar = fakeCalendar(unrelated);
+  setCalendar(calendar as any);
+  const ticket: any = { id: 'email:approved', source: { kind: 'email', id: 'approved' }, status: 'pending', attempts: 0, effects: [] };
+  const result = await reconcile({ events: manyEvents(MAX_NEW_EVENTS + 1), actionItems: [] }, ticket.source, ticket, { addAll: true });
+  assert.equal(calendar.calls.insert, MAX_NEW_EVENTS + 1);
+  assert.equal(result.created.length, MAX_NEW_EVENTS + 1);
+  assert.equal(result.held, undefined);
+});
+
+test('a message at the cap is added in full', async () => {
+  const calendar = fakeCalendar(unrelated);
+  setCalendar(calendar as any);
+  const ticket: any = { id: 'email:atcap', source: { kind: 'email', id: 'atcap' }, status: 'pending', attempts: 0, effects: [] };
+  const result = await reconcile({ events: manyEvents(MAX_NEW_EVENTS), actionItems: [] }, ticket.source, ticket);
+  assert.equal(calendar.calls.insert, MAX_NEW_EVENTS);
+  assert.equal(result.held, undefined);
+});
+
+test('events already on the calendar do not count toward the cap', async () => {
+  const onCalendar: CalEvent = { id: 'g1', title: 'Event 1', start: '2026-12-01', end: '2026-12-01', allDay: true, calendar: 'school' };
+  const calendar = fakeCalendar(onCalendar);
+  setCalendar(calendar as any);
+  const result = await reconcile({ events: manyEvents(MAX_NEW_EVENTS + 1), actionItems: [] });
+  assert.equal(result.duplicates.length, 1);
+  assert.equal(calendar.calls.insert, MAX_NEW_EVENTS);
+  assert.equal(result.held, undefined);
+});
+
+test('the cap also holds a direct (sync or chat) reconcile', async () => {
+  const calendar = fakeCalendar(unrelated);
+  setCalendar(calendar as any);
+  const result = await reconcile({ events: manyEvents(MAX_NEW_EVENTS + 1), actionItems: [] });
+  assert.equal(calendar.calls.insert, 0);
+  assert.equal(result.held, MAX_NEW_EVENTS + 1);
 });

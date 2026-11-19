@@ -135,6 +135,43 @@ function setImage(f) {
   $('dropLabel').textContent = `Screenshot ready: ${f.name || 'pasted image'}`;
 }
 
+// A batch over the server's cap comes back held; this button sends it again with approval.
+function addAllButton(count, run) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'quiet'; b.textContent = `Add all ${count}`;
+  b.addEventListener('click', () => { b.disabled = true; run(); });
+  return b;
+}
+
+async function sendIngest(body) {
+  const r = await api('/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  const data = await r.json();
+  data.created.forEach((ev) => justAdded.add(ev.id));
+  $('result').textContent = data.summary;
+  if (data.held) {
+    $('result').append(' ', addAllButton(data.held, () => sendIngest({ ...body, text: `add all\n${body.text ?? ''}` })
+      .catch((err) => { $('result').textContent = `That did not work: ${err.message}`; })));
+  }
+  await loadWeek();
+}
+
+async function syncSchoolNow(school, addAll) {
+  const r = await api('/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ school, addAll }) });
+  const data = await r.json();
+  data.created.forEach((ev) => justAdded.add(ev.id));
+  if (data.held) {
+    $('schoolLine').textContent = `${school} lists ${data.held} new dates, more than I add at once, so none were added yet. `;
+    $('schoolLine').append(addAllButton(data.held, () => syncSchoolNow(school, true)
+      .catch((err) => { $('schoolLine').textContent = `Could not reach the school site: ${err.message}`; })));
+  } else {
+    $('schoolLine').textContent = data.created.length
+      ? `Added ${data.created.length} events from ${school}. I will check for new ones every day.`
+      : `${school} is set. No new dated events found yet; I will check every day.`;
+  }
+  await loadWeek();
+}
+
 $('ingest').addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = $('text').value.trim();
@@ -143,13 +180,8 @@ $('ingest').addEventListener('submit', async (e) => {
   try {
     const body = { text };
     if (image) { body.imageBase64 = await toBase64(image); body.mimeType = image.type; }
-    const r = await api('/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    data.created.forEach((ev) => justAdded.add(ev.id));
-    $('result').textContent = data.summary;
+    await sendIngest(body);
     $('text').value = ''; image = null; $('file').value = ''; $('dropLabel').textContent = 'Or drop a screenshot of the chat here';
-    await loadWeek();
   } catch (err) {
     $('result').textContent = `That did not work: ${err.message}`;
   } finally {
@@ -164,13 +196,7 @@ $('schoolForm').addEventListener('submit', async (e) => {
   const btn = e.target.querySelector('button'); btn.disabled = true;
   $('schoolLine').textContent = `Looking for ${school}'s newsletters. This takes a minute.`;
   try {
-    const r = await api('/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ school }) });
-    const data = await r.json();
-    data.created.forEach((ev) => justAdded.add(ev.id));
-    $('schoolLine').textContent = data.created.length
-      ? `Added ${data.created.length} events from ${school}. I will check for new ones every day.`
-      : `${school} is set. No new dated events found yet; I will check every day.`;
-    await loadWeek();
+    await syncSchoolNow(school, false);
   } catch (err) {
     $('schoolLine').textContent = `Could not reach the school site: ${err.message}`;
   } finally { btn.disabled = false; }
