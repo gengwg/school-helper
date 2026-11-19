@@ -1,9 +1,12 @@
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatReply, fmtWhen, todayContext, reconcile } from './pipeline.js';
 import { createEvent, setCalendar, type CalEvent } from './calendar.js';
 
 process.env.TZ = 'America/Los_Angeles';
+// Fixture dates are absolute, and the pipeline skips events before today. Pin today to
+// when the fixtures were written so their future dates stay in the future.
+mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-07T20:00:00Z') });
 
 test('todayContext names the weekday and timezone', () => {
   const s = todayContext(new Date('2026-10-04T18:00:00Z'));
